@@ -206,6 +206,11 @@ namespace KK_Plugins.MaterialEditor
             if (!MakerAPI.InsideMaker || MaterialEditorButton == null)
                 return;
 
+#if KK
+            // In KK, always show the button — GetAccessoryObject can return null
+            // even when an accessory is equipped due to slot index differences
+            MaterialEditorButton.Visible.OnNext(true);
+#else
             var accessory = MakerAPI.GetCharacterControl().GetAccessoryObject(AccessoriesApi.SelectedMakerAccSlot);
             if (accessory == null)
             {
@@ -215,6 +220,7 @@ namespace KK_Plugins.MaterialEditor
             {
                 MaterialEditorButton.Visible.OnNext(true);
             }
+#endif
         }
 
         /// <summary>
