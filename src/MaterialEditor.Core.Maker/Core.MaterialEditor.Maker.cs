@@ -92,14 +92,18 @@ namespace KK_Plugins.MaterialEditor
 
         private void MakerAPI_MakerBaseLoaded(object s, RegisterCustomControlsEvent e)
         {
+            MaterialEditorPluginBase.Logger.LogInfo("[ME] MakerBaseLoaded fired");
             try { InitUI(); }
             catch (System.Exception ex) { MaterialEditorPluginBase.Logger.LogError($"[ME] InitUI failed: {ex}"); }
 
 #if KK || EC || KKS
+            MaterialEditorPluginBase.Logger.LogInfo("[ME] Registering maker buttons");
             MaterialEditorButton = MakerAPI.AddAccessoryWindowControl(new MakerButton("Material Editor", null, this));
+            MaterialEditorPluginBase.Logger.LogInfo($"[ME] Accessory button registered: {MaterialEditorButton != null}");
             MaterialEditorButton.GroupingID = "Buttons";
             MaterialEditorButton.OnClick.AddListener(UpdateUIAccessory);
             e.AddControl(new MakerButton("Material Editor", MakerConstants.Body.All, this)).OnClick.AddListener(() => UpdateUICharacter("body"));
+            MaterialEditorPluginBase.Logger.LogInfo("[ME] Body button added");
             e.AddControl(new MakerButton("Material Editor (Body)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter("body"));
             e.AddControl(new MakerButton("Material Editor (Face)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter("face"));
             e.AddControl(new MakerButton("Material Editor (All)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter());
@@ -211,9 +215,13 @@ namespace KK_Plugins.MaterialEditor
         public static void ToggleButtonVisibility()
         {
             if (!MakerAPI.InsideMaker || MaterialEditorButton == null)
+            {
+                MaterialEditorPluginBase.Logger.LogInfo($"[ME] ToggleButtonVisibility skipped: InsideMaker={MakerAPI.InsideMaker} ButtonNull={MaterialEditorButton == null}");
                 return;
+            }
 
 #if KK
+            MaterialEditorPluginBase.Logger.LogInfo("[ME] ToggleButtonVisibility: showing button (KK always-show)");
             // In KK, always show the button — GetAccessoryObject can return null
             // even when an accessory is equipped due to slot index differences
             MaterialEditorButton.Visible.OnNext(true);
