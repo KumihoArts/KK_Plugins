@@ -96,23 +96,19 @@ namespace KK_Plugins.MaterialEditor
         private System.Collections.IEnumerator DelayedInitUI()
         {
             yield return null; // wait a frame before initializing to avoid conflicts with the maker loading
-            try { InitUI(); MaterialEditorPluginBase.Logger.LogInfo("[ME] InitUI completed successfully"); }
-            catch (System.Exception ex) { MaterialEditorPluginBase.Logger.LogError($"[ME] InitUI failed: {ex}"); }
+            try { InitUI(); }
+            catch (System.Exception ex) { MaterialEditorPluginBase.Logger.LogError($"[ME] Maker InitUI failed: {ex}"); }
         }
 
         private void MakerAPI_MakerBaseLoaded(object s, RegisterCustomControlsEvent e)
         {
-            MaterialEditorPluginBase.Logger.LogInfo("[ME] MakerBaseLoaded fired");
             StartCoroutine(DelayedInitUI());
 
 #if KK || EC || KKS
-            MaterialEditorPluginBase.Logger.LogInfo("[ME] Registering maker buttons");
             MaterialEditorButton = MakerAPI.AddAccessoryWindowControl(new MakerButton("Material Editor", null, this));
-            MaterialEditorPluginBase.Logger.LogInfo($"[ME] Accessory button registered: {MaterialEditorButton != null}");
             //MaterialEditorButton.GroupingID = "Buttons"; // disabled, this can affect where the button ends up in KK
             MaterialEditorButton.OnClick.AddListener(UpdateUIAccessory);
             e.AddControl(new MakerButton("Material Editor", MakerConstants.Body.All, this)).OnClick.AddListener(() => UpdateUICharacter("body"));
-            MaterialEditorPluginBase.Logger.LogInfo("[ME] Body button added");
             e.AddControl(new MakerButton("Material Editor (Body)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter("body"));
             e.AddControl(new MakerButton("Material Editor (Face)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter("face"));
             e.AddControl(new MakerButton("Material Editor (All)", MakerConstants.Face.All, this)).OnClick.AddListener(() => UpdateUICharacter());
@@ -191,101 +187,33 @@ namespace KK_Plugins.MaterialEditor
         }
 
 #if KK
-        private static string GetFullPath(Transform t)
-        {
-            string path = t.name;
-            while (t.parent != null) { t = t.parent; path = t.name + "/" + path; }
-            return path;
-        }
-
         private void OnMakerFinished(object sender, System.EventArgs e)
         {
             MakerAPI.MakerFinishedLoading -= OnMakerFinished;
-            MaterialEditorPluginBase.Logger.LogInfo("[ME] MakerFinishedLoading fired — showing button");
             if (MaterialEditorButton != null)
                 MaterialEditorButton.Visible.OnNext(true);
-            _pendingDirectButton = true;
-        }
-
-        private System.Collections.IEnumerator AddDirectAccessoryButton()
-        {
-            yield return null;
-            try
-            {
-                // Try different path variations
-                var grpParent = GameObject.Find("AcsParentWindow/BasePanel/grpParent")
-                    ?? GameObject.Find("04_AccessoryTop/AcsParentWindow/BasePanel/grpParent")
-                    ?? GameObject.Find("grpParent");
-
-                if (grpParent == null)
-                {
-                    // Log all objects named grpParent
-                    var allGrp = Resources.FindObjectsOfTypeAll<GameObject>();
-                    foreach (var go in allGrp)
-                    {
-                        if (go.name == "grpParent")
-                            MaterialEditorPluginBase.Logger.LogInfo($"[ME] Found grpParent at: {GetFullPath(go.transform)}");
-                    }
-                    MaterialEditorPluginBase.Logger.LogWarning("[ME] AddDirectAccessoryButton: grpParent not found, logged all candidates above");
-                    yield break;
-                }
-                MaterialEditorPluginBase.Logger.LogInfo("[ME] AddDirectAccessoryButton: found grpParent, adding button");
-
-                // Find an existing button to clone
-                var existingButton = grpParent.GetComponentInChildren<UnityEngine.UI.Button>();
-                if (existingButton == null)
-                {
-                    MaterialEditorPluginBase.Logger.LogWarning("[ME] AddDirectAccessoryButton: no existing button to clone");
-                    yield break;
-                }
-
-                var btnGO = GameObject.Instantiate(existingButton.gameObject, grpParent.transform);
-                btnGO.name = "btnMaterialEditor";
-                var btnText = btnGO.GetComponentInChildren<UnityEngine.UI.Text>();
-                if (btnText != null) btnText.text = "Material Editor";
-                var btn = btnGO.GetComponent<UnityEngine.UI.Button>();
-                btn.onClick.RemoveAllListeners();
-                btn.onClick.AddListener(() => UpdateUIAccessory());
-                btnGO.SetActive(true);
-                _directButtonAdded = true;
-                MaterialEditorPluginBase.Logger.LogInfo("[ME] AddDirectAccessoryButton: button added successfully");
-            }
-            catch (System.Exception ex)
-            {
-                MaterialEditorPluginBase.Logger.LogError($"[ME] AddDirectAccessoryButton failed: {ex}");
-            }
         }
 
         private bool _pendingButtonShow = false;
         private int _buttonShowAttempts = 0;
-        private bool _pendingDirectButton = false;
-        private bool _directButtonAdded = false;
 
         private void Update()
         {
-            if (_pendingDirectButton)
-            {
-                _pendingDirectButton = false;
-                StartCoroutine(AddDirectAccessoryButton());
-            }
             if (_pendingButtonShow && MaterialEditorButton != null)
             {
                 if (MaterialEditorButton.ControlObject != null)
                 {
                     _pendingButtonShow = false;
                     _buttonShowAttempts = 0;
-                    MaterialEditorPluginBase.Logger.LogInfo("[ME] Update: ControlObject ready, showing button");
                     MaterialEditorButton.Visible.OnNext(true);
                 }
                 else
                 {
                     _buttonShowAttempts++;
-                    if (_buttonShowAttempts % 60 == 0) // only log every 60 frames to avoid spam
-                        MaterialEditorPluginBase.Logger.LogInfo($"[ME] Update: waiting for ControlObject... attempt {_buttonShowAttempts}");
-                    if (_buttonShowAttempts > 600) // stop trying after about 10 seconds
+                    if (_buttonShowAttempts > 600)
                     {
                         _pendingButtonShow = false;
-                        MaterialEditorPluginBase.Logger.LogWarning("[ME] Update: gave up waiting for ControlObject");
+                        MaterialEditorPluginBase.Logger.LogWarning("[ME] Gave up waiting for accessory button ControlObject after 10 seconds");
                     }
                 }
             }
@@ -362,20 +290,13 @@ namespace KK_Plugins.MaterialEditor
         public static void ToggleButtonVisibility()
         {
             if (!MakerAPI.InsideMaker || MaterialEditorButton == null)
-            {
-                MaterialEditorPluginBase.Logger.LogInfo($"[ME] ToggleButtonVisibility skipped: InsideMaker={MakerAPI.InsideMaker} ButtonNull={MaterialEditorButton == null}");
                 return;
-            }
 
 #if KK
-            MaterialEditorPluginBase.Logger.LogInfo("[ME] ToggleButtonVisibility: showing button (KK always-show)");
             // In KK we always show the button regardless of slot state.
             // GetAccessoryObject can return null even when an accessory is equipped
             // because of how slot indices work in this game version.
             MaterialEditorButton.Visible.OnNext(true);
-            // Also queue up the direct button injection if it hasn't been done yet
-            if (Instance != null && !Instance._directButtonAdded)
-                Instance._pendingDirectButton = true;
 #else
             var accessory = MakerAPI.GetCharacterControl().GetAccessoryObject(AccessoriesApi.SelectedMakerAccSlot);
             if (accessory == null)

@@ -774,6 +774,8 @@ namespace MaterialEditorAPI
             UILib.UIUtility.standardSprite       = FlatSprite;
             UILib.UIUtility.resources.background = FlatSprite;
             UILib.UIUtility.resources.standard   = FlatSprite;
+            try
+            {
             //Set theme colours before creating the template so static labels pick up the correct colour
             ItemTextColor = MaterialEditorPluginBase.DarkMode.Value ? new Color(0.90f, 0.90f, 0.90f, 1f) : Color.black;
 
@@ -1204,10 +1206,14 @@ namespace MaterialEditorAPI
             TooltipManager.AddTooltip(resizeHandleGO, "Drag to resize");
 
             //Restore UILib sprites so other plugins aren't affected
+            } // end try
+            finally
+            {
             UILib.UIUtility.backgroundSprite     = origBackground;
             UILib.UIUtility.standardSprite       = origStandard;
             UILib.UIUtility.resources.background = origBackground;
             UILib.UIUtility.resources.standard   = origStandard;
+            }
 
             ApplyTheme();
         }
