@@ -63,12 +63,19 @@ namespace KK_Plugins.MaterialEditor
 
         private void Start()
         {
-            Instance = this;
-            SceneManager.sceneLoaded += (s, lsm) => InitStudioUI(s.name);
-            StudioSaveLoadApi.RegisterExtraBehaviour<SceneController>(MaterialEditorPlugin.PluginGUID);
+            try
+            {
+                Instance = this;
+                SceneManager.sceneLoaded += (s, lsm) => InitStudioUI(s.name);
+                StudioSaveLoadApi.RegisterExtraBehaviour<SceneController>(MaterialEditorPlugin.PluginGUID);
 #if !PH
-            TimelineCompatibilityHelper.PopulateTimeline();
+                TimelineCompatibilityHelper.PopulateTimeline();
 #endif
+            }
+            catch (System.Exception ex)
+            {
+                MaterialEditorPluginBase.Logger.LogError($"[ME] Studio Start() failed: {ex}");
+            }
         }
 
         private void InitStudioUI(string sceneName)
