@@ -311,6 +311,12 @@ namespace KK_Plugins.MaterialEditor
             var controller = MaterialEditorPlugin.GetCharaController(__instance);
             if (controller != null)
                 controller.ChangeCustomClothesEvent(kind);
+#if AI || HS2
+            // Close ME on clothes swap — property lists were just cleared by ChangeCustomClothesEvent,
+            // so there is nothing custom to display. User can re-open ME for the new outfit.
+            if (MakerAPI.InsideAndLoaded && MaterialEditorAPI.MaterialEditorUI.Visible && MEMaker.Instance != null)
+                MaterialEditorAPI.MaterialEditorUI.Visible = false;
+#endif
         }
 
         [HarmonyPostfix, HarmonyPatch(typeof(ChaControl), nameof(ChaControl.ChangeAccessory), typeof(int), typeof(int), typeof(int), typeof(string), typeof(bool))]
@@ -336,6 +342,25 @@ namespace KK_Plugins.MaterialEditor
         private static void ChangeHair(ChaControl __instance, int kind, ref IEnumerator __result)
         {
             __result = __result.AppendCo(() => ChangeHair(__instance, kind));
+            //Refresh ME after hair finishes loading if it is open in maker
+            if (MakerAPI.InsideAndLoaded && MaterialEditorAPI.MaterialEditorUI.Visible && MEMaker.Instance != null)
+            {
+                int capturedKind = kind;
+                __result = __result.AppendCo(() =>
+                {
+                    // Extra yield — hair component may not be attached yet at coroutine end
+                    if (MEMaker.Instance != null)
+                        MEMaker.Instance.StartCoroutine(RefreshHairDelayed(capturedKind));
+                });
+            }
+        }
+        private static IEnumerator RefreshHairDelayed(int kind)
+        {
+            yield return null; // wait one extra frame for ChaCustomHairComponent to attach
+            // Close ME rather than repopulate — ChangeHairEvent already cleared property lists,
+            // so there is nothing custom to display. User can re-open ME for the new hair.
+            if (MaterialEditorAPI.MaterialEditorUI.Visible && MEMaker.Instance != null)
+                MaterialEditorAPI.MaterialEditorUI.Visible = false;
         }
 #endif
         private static void ChangeHair(ChaControl __instance, int kind)
