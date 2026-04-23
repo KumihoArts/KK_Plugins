@@ -83,6 +83,9 @@ namespace KK_Plugins.MaterialEditor
 #endif
 
             Harmony.CreateAndPatchAll(typeof(MakerHooks));
+#if KK
+            Harmony.CreateAndPatchAll(typeof(KKMakerFinishedLoadingFix));
+#endif
             }
             catch (System.Exception ex)
             {
@@ -90,17 +93,23 @@ namespace KK_Plugins.MaterialEditor
             }
         }
 
+        private System.Collections.IEnumerator DelayedInitUI()
+        {
+            yield return null; // wait a frame before initializing to avoid conflicts with the maker loading
+            try { InitUI(); MaterialEditorPluginBase.Logger.LogInfo("[ME] InitUI completed successfully"); }
+            catch (System.Exception ex) { MaterialEditorPluginBase.Logger.LogError($"[ME] InitUI failed: {ex}"); }
+        }
+
         private void MakerAPI_MakerBaseLoaded(object s, RegisterCustomControlsEvent e)
         {
             MaterialEditorPluginBase.Logger.LogInfo("[ME] MakerBaseLoaded fired");
-            try { InitUI(); }
-            catch (System.Exception ex) { MaterialEditorPluginBase.Logger.LogError($"[ME] InitUI failed: {ex}"); }
+            StartCoroutine(DelayedInitUI());
 
 #if KK || EC || KKS
             MaterialEditorPluginBase.Logger.LogInfo("[ME] Registering maker buttons");
             MaterialEditorButton = MakerAPI.AddAccessoryWindowControl(new MakerButton("Material Editor", null, this));
             MaterialEditorPluginBase.Logger.LogInfo($"[ME] Accessory button registered: {MaterialEditorButton != null}");
-            MaterialEditorButton.GroupingID = "Buttons";
+            //MaterialEditorButton.GroupingID = "Buttons"; // disabled, this can affect where the button ends up in KK
             MaterialEditorButton.OnClick.AddListener(UpdateUIAccessory);
             e.AddControl(new MakerButton("Material Editor", MakerConstants.Body.All, this)).OnClick.AddListener(() => UpdateUICharacter("body"));
             MaterialEditorPluginBase.Logger.LogInfo("[ME] Body button added");
@@ -175,7 +184,145 @@ namespace KK_Plugins.MaterialEditor
             currentClothesIndex = 0;
 
             ColorPalette = new MakerColorPalette();
+#if KK
+            MakerAPI.MakerFinishedLoading += OnMakerFinished;
+            _pendingButtonShow = true;
+#endif
         }
+
+#if KK
+        private static string GetFullPath(Transform t)
+        {
+            string path = t.name;
+            while (t.parent != null) { t = t.parent; path = t.name + "/" + path; }
+            return path;
+        }
+
+        private void OnMakerFinished(object sender, System.EventArgs e)
+        {
+            MakerAPI.MakerFinishedLoading -= OnMakerFinished;
+            MaterialEditorPluginBase.Logger.LogInfo("[ME] MakerFinishedLoading fired — showing button");
+            if (MaterialEditorButton != null)
+                MaterialEditorButton.Visible.OnNext(true);
+            _pendingDirectButton = true;
+        }
+
+        private System.Collections.IEnumerator AddDirectAccessoryButton()
+        {
+            yield return null;
+            try
+            {
+                // Try different path variations
+                var grpParent = GameObject.Find("AcsParentWindow/BasePanel/grpParent")
+                    ?? GameObject.Find("04_AccessoryTop/AcsParentWindow/BasePanel/grpParent")
+                    ?? GameObject.Find("grpParent");
+
+                if (grpParent == null)
+                {
+                    // Log all objects named grpParent
+                    var allGrp = Resources.FindObjectsOfTypeAll<GameObject>();
+                    foreach (var go in allGrp)
+                    {
+                        if (go.name == "grpParent")
+                            MaterialEditorPluginBase.Logger.LogInfo($"[ME] Found grpParent at: {GetFullPath(go.transform)}");
+                    }
+                    MaterialEditorPluginBase.Logger.LogWarning("[ME] AddDirectAccessoryButton: grpParent not found, logged all candidates above");
+                    yield break;
+                }
+                MaterialEditorPluginBase.Logger.LogInfo("[ME] AddDirectAccessoryButton: found grpParent, adding button");
+
+                // Find an existing button to clone
+                var existingButton = grpParent.GetComponentInChildren<UnityEngine.UI.Button>();
+                if (existingButton == null)
+                {
+                    MaterialEditorPluginBase.Logger.LogWarning("[ME] AddDirectAccessoryButton: no existing button to clone");
+                    yield break;
+                }
+
+                var btnGO = GameObject.Instantiate(existingButton.gameObject, grpParent.transform);
+                btnGO.name = "btnMaterialEditor";
+                var btnText = btnGO.GetComponentInChildren<UnityEngine.UI.Text>();
+                if (btnText != null) btnText.text = "Material Editor";
+                var btn = btnGO.GetComponent<UnityEngine.UI.Button>();
+                btn.onClick.RemoveAllListeners();
+                btn.onClick.AddListener(() => UpdateUIAccessory());
+                btnGO.SetActive(true);
+                _directButtonAdded = true;
+                MaterialEditorPluginBase.Logger.LogInfo("[ME] AddDirectAccessoryButton: button added successfully");
+            }
+            catch (System.Exception ex)
+            {
+                MaterialEditorPluginBase.Logger.LogError($"[ME] AddDirectAccessoryButton failed: {ex}");
+            }
+        }
+
+        private bool _pendingButtonShow = false;
+        private int _buttonShowAttempts = 0;
+        private bool _pendingDirectButton = false;
+        private bool _directButtonAdded = false;
+
+        private void Update()
+        {
+            if (_pendingDirectButton)
+            {
+                _pendingDirectButton = false;
+                StartCoroutine(AddDirectAccessoryButton());
+            }
+            if (_pendingButtonShow && MaterialEditorButton != null)
+            {
+                if (MaterialEditorButton.ControlObject != null)
+                {
+                    _pendingButtonShow = false;
+                    _buttonShowAttempts = 0;
+                    MaterialEditorPluginBase.Logger.LogInfo("[ME] Update: ControlObject ready, showing button");
+                    MaterialEditorButton.Visible.OnNext(true);
+                }
+                else
+                {
+                    _buttonShowAttempts++;
+                    if (_buttonShowAttempts % 60 == 0) // only log every 60 frames to avoid spam
+                        MaterialEditorPluginBase.Logger.LogInfo($"[ME] Update: waiting for ControlObject... attempt {_buttonShowAttempts}");
+                    if (_buttonShowAttempts > 600) // stop trying after about 10 seconds
+                    {
+                        _pendingButtonShow = false;
+                        MaterialEditorPluginBase.Logger.LogWarning("[ME] Update: gave up waiting for ControlObject");
+                    }
+                }
+            }
+        }
+
+        // On some KK installs with certain BepisPlugins versions, MakerFinishedLoading never fires.
+        // The root cause is that KKAPI's internal waitForSceneFade coroutine waits on
+        // Manager.Scene.IsNowLoadingFade returning false, but that never happens on affected installs.
+        // This patch forces IsNowLoadingFade to false while in maker so the coroutine can complete.
+        [HarmonyPatch]
+        private static class KKMakerFinishedLoadingFix
+        {
+            [HarmonyPostfix]
+            [HarmonyPatch(typeof(Manager.Scene), nameof(Manager.Scene.IsNowLoadingFade), MethodType.Getter)]
+            private static void IsNowLoadingFade_Postfix(ref bool __result)
+            {
+                if (KKAPI.Maker.MakerAPI.InsideMaker && !KKAPI.Maker.MakerAPI.InsideAndLoaded)
+                    __result = false;
+            }
+
+            // Once MakerFinishedLoading fires, make sure the button is visible if ControlObject was built
+            [HarmonyPostfix]
+            [HarmonyPatch(typeof(KKAPI.Maker.MakerAPI), "OnMakerFinishedLoading")]
+            private static void AfterMakerFinishedLoading()
+            {
+                if (MEMaker.MaterialEditorButton?.ControlObject != null)
+                {
+                    MaterialEditorPluginBase.Logger.LogInfo("[ME] AfterMakerFinishedLoading: ControlObject exists, forcing visible");
+                    MEMaker.MaterialEditorButton.Visible.OnNext(true);
+                }
+                else
+                {
+                    MaterialEditorPluginBase.Logger.LogWarning("[ME] AfterMakerFinishedLoading: ControlObject still null");
+                }
+            }
+        }
+#endif
 
         private void MakerAPI_RegisterCustomSubCategories(object sender, RegisterSubCategoriesEvent e)
         {
@@ -222,9 +369,13 @@ namespace KK_Plugins.MaterialEditor
 
 #if KK
             MaterialEditorPluginBase.Logger.LogInfo("[ME] ToggleButtonVisibility: showing button (KK always-show)");
-            // In KK, always show the button — GetAccessoryObject can return null
-            // even when an accessory is equipped due to slot index differences
+            // In KK we always show the button regardless of slot state.
+            // GetAccessoryObject can return null even when an accessory is equipped
+            // because of how slot indices work in this game version.
             MaterialEditorButton.Visible.OnNext(true);
+            // Also queue up the direct button injection if it hasn't been done yet
+            if (Instance != null && !Instance._directButtonAdded)
+                Instance._pendingDirectButton = true;
 #else
             var accessory = MakerAPI.GetCharacterControl().GetAccessoryObject(AccessoriesApi.SelectedMakerAccSlot);
             if (accessory == null)
@@ -244,8 +395,11 @@ namespace KK_Plugins.MaterialEditor
         /// <param name="filter"></param>
         public void UpdateUICharacter(string filter = "")
         {
-            if (!MakerAPI.InsideAndLoaded)
-                return;
+#if KK
+            if (!MakerAPI.InsideMaker) return;
+#else
+            if (!MakerAPI.InsideAndLoaded) return;
+#endif
 
             var chaControl = MakerAPI.GetCharacterControl();
             PopulateList(chaControl.gameObject, new ObjectData(0, MaterialEditorCharaController.ObjectType.Character), filter);
@@ -262,8 +416,11 @@ namespace KK_Plugins.MaterialEditor
         /// </summary>
         public void UpdateUIClothes(int index, bool autoRefreshOnly)
         {
-            if (!MakerAPI.InsideAndLoaded)
-                return;
+#if KK
+            if (!MakerAPI.InsideMaker) return;
+#else
+            if (!MakerAPI.InsideAndLoaded) return;
+#endif
 
 #if KK || KKS
             if (index > 8)
@@ -274,7 +431,8 @@ namespace KK_Plugins.MaterialEditor
 #endif
                 return;
 
-            // Hook calls this with autoRefreshOnly=true: only proceed if ME is already showing this exact slot
+            // When autoRefreshOnly is true (called from hooks), skip the update
+            // unless ME is already open on this specific slot
             if (autoRefreshOnly)
             {
                 if (!Visible) return;
@@ -299,8 +457,11 @@ namespace KK_Plugins.MaterialEditor
         /// </summary>
         public void UpdateUIAccessory()
         {
-            if (!MakerAPI.InsideAndLoaded)
-                return;
+#if KK
+            if (!MakerAPI.InsideMaker) return;
+#else
+            if (!MakerAPI.InsideAndLoaded) return;
+#endif
 
             var accessory = MakerAPI.GetCharacterControl().GetAccessoryObject(AccessoriesApi.SelectedMakerAccSlot);
             if (accessory == null)
@@ -319,13 +480,17 @@ namespace KK_Plugins.MaterialEditor
         /// </summary>
         public void UpdateUIHair(int index, bool autoRefreshOnly)
         {
-            if (!MakerAPI.InsideAndLoaded)
-                return;
+#if KK
+            if (!MakerAPI.InsideMaker) return;
+#else
+            if (!MakerAPI.InsideAndLoaded) return;
+#endif
 
             if (index > 3)
                 return;
 
-            // Hook calls this with autoRefreshOnly=true: only proceed if ME is already showing this exact slot
+            // When autoRefreshOnly is true (called from hooks), skip the update
+            // unless ME is already open on this specific slot
             if (autoRefreshOnly)
             {
                 if (!Visible) return;
