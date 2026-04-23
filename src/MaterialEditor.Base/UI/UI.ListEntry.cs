@@ -912,88 +912,104 @@ namespace MaterialEditorAPI
 
         private void ShowRenderer(bool visible = true)
         {
+            if (RendererPanel == null) return;
             RendererPanel.alpha = visible ? 1 : 0;
             RendererPanel.blocksRaycasts = visible;
         }
 
         private void ShowRendererEnabled(bool visible = true)
         {
+            if (RendererEnabledPanel == null) return;
             RendererEnabledPanel.alpha = visible ? 1 : 0;
             RendererEnabledPanel.blocksRaycasts = visible;
         }
         private void ShowRendererShadowCastingMode(bool visible = true)
         {
+            if (RendererShadowCastingModePanel == null) return;
             RendererShadowCastingModePanel.alpha = visible ? 1 : 0;
             RendererShadowCastingModePanel.blocksRaycasts = visible;
         }
         private void ShowRendererReceiveShadows(bool visible = true)
         {
+            if (RendererReceiveShadowsPanel == null) return;
             RendererReceiveShadowsPanel.alpha = visible ? 1 : 0;
             RendererReceiveShadowsPanel.blocksRaycasts = visible;
         }
         private void ShowRendererUpdateWhenOffscreen(bool visible = true)
         {
+            if (RendererUpdateWhenOffscreenPanel == null) return;
             RendererUpdateWhenOffscreenPanel.alpha = visible ? 1 : 0;
             RendererUpdateWhenOffscreenPanel.blocksRaycasts = visible;
         }
         private void ShowRendererRecalculateNormals(bool visible = true)
         {
+            if (RendererRecalculateNormalsPanel == null) return;
             RendererRecalculateNormalsPanel.alpha = visible ? 1 : 0;
             RendererRecalculateNormalsPanel.blocksRaycasts = visible;
         }
         private void ShowMaterialSection(bool visible = true)
         {
+            if (MaterialSectionPanel == null) return;
             MaterialSectionPanel.alpha = visible ? 1 : 0;
             MaterialSectionPanel.blocksRaycasts = visible;
         }
 
         private void ShowMaterial(bool visible = true)
         {
+            if (MaterialPanel == null) return;
             MaterialPanel.alpha = visible ? 1 : 0;
             MaterialPanel.blocksRaycasts = visible;
         }
         private void ShowShader(bool visible = true)
         {
+            if (ShaderPanel == null) return;
             ShaderPanel.alpha = visible ? 1 : 0;
             ShaderPanel.blocksRaycasts = visible;
         }
         private void ShowShaderRenderQueue(bool visible = true)
         {
+            if (ShaderRenderQueuePanel == null) return;
             ShaderRenderQueuePanel.alpha = visible ? 1 : 0;
             ShaderRenderQueuePanel.blocksRaycasts = visible;
         }
 
         private void ShowPropertyCategory(bool visible = true) {
+            if (PropertyCategoryPanel == null) return;
             PropertyCategoryPanel.alpha = visible ? 1 : 0;
             PropertyCategoryPanel.blocksRaycasts = visible;
         }
 
         private void ShowTexture(bool visible = true)
         {
+            if (TexturePanel == null) return;
             TexturePanel.alpha = visible ? 1 : 0;
             TexturePanel.blocksRaycasts = visible;
         }
 
         private void ShowOffsetScale(bool visible = true)
         {
+            if (OffsetScalePanel == null) return;
             OffsetScalePanel.alpha = visible ? 1 : 0;
             OffsetScalePanel.blocksRaycasts = visible;
         }
 
         private void ShowColor(bool visible = true)
         {
+            if (ColorPanel == null) return;
             ColorPanel.alpha = visible ? 1 : 0;
             ColorPanel.blocksRaycasts = visible;
         }
 
         private void ShowFloat(bool visible = true)
         {
+            if (FloatPanel == null) return;
             FloatPanel.alpha = visible ? 1 : 0;
             FloatPanel.blocksRaycasts = visible;
         }
         
         private void ShowKeyword(bool visible = true)
         {
+            if (KeywordPanel == null) return;
             KeywordPanel.alpha = visible ? 1 : 0;
             KeywordPanel.blocksRaycasts = visible;
         }
