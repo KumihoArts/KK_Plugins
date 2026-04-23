@@ -59,6 +59,8 @@ namespace KK_Plugins.MaterialEditor
 
         private void Start()
         {
+            try
+            {
             Instance = this;
             MakerAPI.MakerBaseLoaded += MakerAPI_MakerBaseLoaded;
             MakerAPI.RegisterCustomSubCategories += MakerAPI_RegisterCustomSubCategories;
@@ -81,6 +83,11 @@ namespace KK_Plugins.MaterialEditor
 #endif
 
             Harmony.CreateAndPatchAll(typeof(MakerHooks));
+            }
+            catch (System.Exception ex)
+            {
+                MaterialEditorPluginBase.Logger.LogError($"[ME] Maker Start() failed: {ex}");
+            }
         }
 
         private void MakerAPI_MakerBaseLoaded(object s, RegisterCustomControlsEvent e)
