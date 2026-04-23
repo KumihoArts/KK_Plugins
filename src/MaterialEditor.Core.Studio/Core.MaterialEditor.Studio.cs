@@ -76,10 +76,11 @@ namespace KK_Plugins.MaterialEditor
             if (sceneName != "Studio") return;
             SceneManager.sceneLoaded -= (s, lsm) => InitStudioUI(s.name);
 
-            InitUI();
+            try { InitUI(); }
+            catch (System.Exception ex) { MaterialEditorPluginBase.Logger.LogError($"[ME] Studio InitUI failed: {ex}"); }
 
             ItemTypeDropDown = UIUtility.CreateDropdown("ItemType", DragPanel.transform);
-            ItemTypeDropDown.transform.SetRect(1f, 0f, 1f, 1f, -220f, 1f, -39f, -1f);
+            ItemTypeDropDown.transform.SetRect(1f, 0f, 1f, 1f, -200f, 1f, -42f, -1f);
             ItemTypeDropDown.captionText.transform.SetRect(0.05f, 0f, 1f, 1f, 5f, 2f, -15f, -2f);
             ItemTypeDropDown.captionText.alignment = TextAnchor.MiddleLeft;
             ItemTypeDropDown.gameObject.SetActive(false);
