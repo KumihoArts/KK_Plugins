@@ -905,6 +905,7 @@ namespace MaterialEditorAPI
 
         private void ShowRendererSection(bool visible = true)
         {
+            if (RendererSectionPanel == null) return;
             RendererSectionPanel.alpha = visible ? 1 : 0;
             RendererSectionPanel.blocksRaycasts = visible;
         }
@@ -999,12 +1000,15 @@ namespace MaterialEditorAPI
 
         public T GetUIComponent<T>(string gameObjectName) where T : Component
         {
-            GameObject uiObject = transform.FindLoop(gameObjectName).gameObject;
-            if (uiObject == null)
-                throw new ArgumentException($"Couldn't find {gameObjectName}");
-            var component = uiObject.GetComponent<T>();
+            var found = transform.FindLoop(gameObjectName);
+            if (found == null)
+            {
+                MaterialEditorPluginBase.Logger.LogWarning($"[ME] GetUIComponent: could not find GameObject '{gameObjectName}'");
+                return null;
+            }
+            var component = found.gameObject.GetComponent<T>();
             if (component == null)
-                throw new ArgumentException($"Couldn't find {gameObjectName}");
+                MaterialEditorPluginBase.Logger.LogWarning($"[ME] GetUIComponent: found '{gameObjectName}' but it has no {typeof(T).Name} component");
             return component;
         }
     }
