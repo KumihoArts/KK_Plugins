@@ -85,7 +85,8 @@ namespace KK_Plugins.MaterialEditor
 
         private void MakerAPI_MakerBaseLoaded(object s, RegisterCustomControlsEvent e)
         {
-            InitUI();
+            try { InitUI(); }
+            catch (System.Exception ex) { MaterialEditorPluginBase.Logger.LogError($"[ME] InitUI failed: {ex}"); }
 
 #if KK || EC || KKS
             MaterialEditorButton = MakerAPI.AddAccessoryWindowControl(new MakerButton("Material Editor", null, this));
@@ -233,7 +234,12 @@ namespace KK_Plugins.MaterialEditor
         /// Shows the MaterialEditor UI for the specified clothing index or refreshes the UI if already open
         /// </summary>
         /// <param name="index"></param>
-        public void UpdateUIClothes(int index)
+        public void UpdateUIClothes(int index) => UpdateUIClothes(index, false);
+
+        /// <summary>
+        /// Shows the MaterialEditor UI for the specified clothing index, or skips if autoRefreshOnly and ME isn't showing that slot.
+        /// </summary>
+        public void UpdateUIClothes(int index, bool autoRefreshOnly)
         {
             if (!MakerAPI.InsideAndLoaded)
                 return;
@@ -245,21 +251,26 @@ namespace KK_Plugins.MaterialEditor
 #else
             if (index > 7)
 #endif
-            {
-                Visible = false;
                 return;
+
+            // Hook calls this with autoRefreshOnly=true: only proceed if ME is already showing this exact slot
+            if (autoRefreshOnly)
+            {
+                if (!Visible) return;
+                if (!(CurrentData is ObjectData autoOd
+                    && autoOd.ObjectType == MaterialEditorCharaController.ObjectType.Clothing
+                    && autoOd.Slot == index))
+                    return;
             }
 
             var chaControl = MakerAPI.GetCharacterControl();
             var clothes = chaControl.GetClothes(index);
 #if PH
-            if (clothes == null)
+            if (clothes == null) return;
 #else
-            if (clothes == null || clothes.GetComponentInChildren<ChaClothesComponent>() == null)
+            if (clothes == null || clothes.GetComponentInChildren<ChaClothesComponent>() == null) return;
 #endif
-                Visible = false;
-            else
-                PopulateList(clothes, new ObjectData(index, MaterialEditorCharaController.ObjectType.Clothing));
+            PopulateList(clothes, new ObjectData(index, MaterialEditorCharaController.ObjectType.Clothing));
         }
 
         /// <summary>
@@ -280,27 +291,37 @@ namespace KK_Plugins.MaterialEditor
         /// <summary>
         /// Shows the MaterialEditor UI for the specified hair index or refreshes the UI if already open
         /// </summary>
-        public void UpdateUIHair(int index)
+        public void UpdateUIHair(int index) => UpdateUIHair(index, false);
+
+        /// <summary>
+        /// Shows the MaterialEditor UI for the specified hair index, or skips if autoRefreshOnly and ME isn't showing that slot.
+        /// </summary>
+        public void UpdateUIHair(int index, bool autoRefreshOnly)
         {
             if (!MakerAPI.InsideAndLoaded)
                 return;
 
             if (index > 3)
-            {
-                Visible = false;
                 return;
+
+            // Hook calls this with autoRefreshOnly=true: only proceed if ME is already showing this exact slot
+            if (autoRefreshOnly)
+            {
+                if (!Visible) return;
+                if (!(CurrentData is ObjectData autoOd
+                    && autoOd.ObjectType == MaterialEditorCharaController.ObjectType.Hair
+                    && autoOd.Slot == index))
+                    return;
             }
 
             var chaControl = MakerAPI.GetCharacterControl();
             var hair = chaControl.GetHair(index);
 #if PH
-            if (hair == null)
+            if (hair == null) return;
 #else
-            if (hair.GetComponent<ChaCustomHairComponent>() == null)
+            if (hair.GetComponent<ChaCustomHairComponent>() == null) return;
 #endif
-                Visible = false;
-            else
-                PopulateList(hair, new ObjectData(index, MaterialEditorCharaController.ObjectType.Hair));
+            PopulateList(hair, new ObjectData(index, MaterialEditorCharaController.ObjectType.Hair));
         }
 
         internal override void ExportTexture(Material mat, string property)
