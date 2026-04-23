@@ -76,42 +76,48 @@ namespace KK_Plugins.MaterialEditor
             if (sceneName != "Studio") return;
             SceneManager.sceneLoaded -= (s, lsm) => InitStudioUI(s.name);
 
-            try { InitUI(); }
-            catch (System.Exception ex) { MaterialEditorPluginBase.Logger.LogError($"[ME] Studio InitUI failed: {ex}"); }
+            try
+            {
+                InitUI();
 
-            ItemTypeDropDown = UIUtility.CreateDropdown("ItemType", DragPanel.transform);
-            ItemTypeDropDown.transform.SetRect(1f, 0f, 1f, 1f, -200f, 1f, -42f, -1f);
-            ItemTypeDropDown.captionText.transform.SetRect(0.05f, 0f, 1f, 1f, 5f, 2f, -15f, -2f);
-            ItemTypeDropDown.captionText.alignment = TextAnchor.MiddleLeft;
-            ItemTypeDropDown.gameObject.SetActive(false);
-            AutoScrollToSelectionWithDropdown.Setup(ItemTypeDropDown);
+                ItemTypeDropDown = UIUtility.CreateDropdown("ItemType", DragPanel.transform);
+                ItemTypeDropDown.transform.SetRect(1f, 0f, 1f, 1f, -200f, 1f, -42f, -1f);
+                ItemTypeDropDown.captionText.transform.SetRect(0.05f, 0f, 1f, 1f, 5f, 2f, -15f, -2f);
+                ItemTypeDropDown.captionText.alignment = TextAnchor.MiddleLeft;
+                ItemTypeDropDown.gameObject.SetActive(false);
+                AutoScrollToSelectionWithDropdown.Setup(ItemTypeDropDown);
 
 #if PH
-            RectTransform original = GameObject.Find("StudioScene").transform.Find("Canvas Object List/Image Bar/Button Folder").GetComponent<RectTransform>();
+                RectTransform original = GameObject.Find("StudioScene").transform.Find("Canvas Object List/Image Bar/Button Folder").GetComponent<RectTransform>();
 #else
-            RectTransform original = GameObject.Find("StudioScene").transform.Find("Canvas Object List/Image Bar/Button Route").GetComponent<RectTransform>();
+                RectTransform original = GameObject.Find("StudioScene").transform.Find("Canvas Object List/Image Bar/Button Route").GetComponent<RectTransform>();
 #endif
-            Button materialEditorButton = Instantiate(original.gameObject).GetComponent<Button>();
-            RectTransform materialEditorButtonRectTransform = materialEditorButton.transform as RectTransform;
-            materialEditorButton.transform.SetParent(original.parent, true);
-            materialEditorButton.transform.localScale = original.localScale;
-            materialEditorButtonRectTransform.SetRect(original.anchorMin, original.anchorMax, original.offsetMin, original.offsetMax);
+                Button materialEditorButton = Instantiate(original.gameObject).GetComponent<Button>();
+                RectTransform materialEditorButtonRectTransform = materialEditorButton.transform as RectTransform;
+                materialEditorButton.transform.SetParent(original.parent, true);
+                materialEditorButton.transform.localScale = original.localScale;
+                materialEditorButtonRectTransform.SetRect(original.anchorMin, original.anchorMax, original.offsetMin, original.offsetMax);
 #if PH
-            materialEditorButtonRectTransform.anchoredPosition = original.anchoredPosition + new Vector2(-40f, 0f);
+                materialEditorButtonRectTransform.anchoredPosition = original.anchoredPosition + new Vector2(-40f, 0f);
 #else
-            materialEditorButtonRectTransform.anchoredPosition = original.anchoredPosition + new Vector2(-48f, 0f);
+                materialEditorButtonRectTransform.anchoredPosition = original.anchoredPosition + new Vector2(-48f, 0f);
 #endif
 
-            Texture2D texture2D = new Texture2D(32, 32);
-            texture2D.LoadImage(LoadIcon());
-            var MatEditorIcon = materialEditorButton.targetGraphic as Image;
-            MatEditorIcon.sprite = Sprite.Create(texture2D, new Rect(0f, 0f, 32, 32), new Vector2(16, 16));
-            MatEditorIcon.color = Color.white;
+                Texture2D texture2D = new Texture2D(32, 32);
+                texture2D.LoadImage(LoadIcon());
+                var MatEditorIcon = materialEditorButton.targetGraphic as Image;
+                MatEditorIcon.sprite = Sprite.Create(texture2D, new Rect(0f, 0f, 32, 32), new Vector2(16, 16));
+                MatEditorIcon.color = Color.white;
 
-            materialEditorButton.onClick = new Button.ButtonClickedEvent();
-            materialEditorButton.onClick.AddListener(() => { UpdateUI(); });
+                materialEditorButton.onClick = new Button.ButtonClickedEvent();
+                materialEditorButton.onClick.AddListener(() => { UpdateUI(); });
 
-            ColorPalette = new StudioColorPalette();
+                ColorPalette = new StudioColorPalette();
+            }
+            catch (System.Exception ex)
+            {
+                MaterialEditorPluginBase.Logger.LogError($"[ME] Studio InitUI failed: {ex}");
+            }
         }
 
         internal byte[] LoadIcon()
